@@ -1,0 +1,72 @@
+<resources>
+    <string name="app_name">德賽手環測試用App</string>
+    <string name="scan">Scan</string>
+    <string name="connect">Connect</string>
+    <string name="connecting">Connecting</string>
+    <string name="disconnect">Disconnect</string>
+    <string name="disconnecting">Disconnecting</string>
+    <string name="setting">Setting</string>
+    <string name="list1">List1</string>
+    <string name="list2">List2</string>
+    <string name="list3">List3</string>
+
+    <string name="prompt_email">Email</string>
+    <string name="prompt_password">Password</string>
+    <string name="prompt_password_confirm">Password Confirmation</string>
+    <string name="action_sign_in">Sign in</string>
+    <string name="action_sign_up">Sign up</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="check_remember_account">Remember me</string>
+    <string name="error_invalid_email">This email address is invalid</string>
+    <string name="error_invalid_password">This password is too short</string>
+    <string name="error_incorrect_password">This password is incorrect</string>
+    <string name="error_Inconsistent_password">Password confirmation does not match Password</string>
+    <string name="error_field_required">This field is required</string>
+    <string name="permission_rationale">"Contacts permissions are needed for providing email
+        completions."
+    </string>
+    <string name="error_invalid_account">Email or password incorrect</string>
+
+    <string-array name="device_model">
+        <item>SH09</item>
+        <item>V2</item>
+    </string-array>
+
+    <string-array name="gender_list">
+        <item>女</item>
+        <item>男</item>
+    </string-array>
+
+    <string-array name="vibration_mode_list">
+        <item>VIBRATION_CALL</item>
+        <item>VIBRATION_DISCONNECTION</item>
+        <item>VIBRATION_ALARM1</item>
+    </string-array>
+
+    <string-array name="heart_mode_list">
+        <item>TYPE_HEART_START</item>
+        <item>TYPE_HEART_STOP</item>
+        <item>TYPE_HEART_GET</item>
+    </string-array>
+
+    <string-array name="unit_type_list">
+        <item>TYPE_UNIT_METRIC</item>
+        <item>TYPE_UNIT_IMPERIAL</item>
+    </string-array>
+
+    <string-array name="time_format_list">
+        <item>24</item>
+        <item>12</item>
+    </string-array>
+
+    <string-array name="message_notify_list">
+        <item>QQ</item>
+        <item>WECHAT</item>
+        <item>PHONE</item>
+        <item>SMS</item>
+        <item>FACEBOOK</item>
+        <item>TWITTER</item>
+        <item>GMAIL</item>
+        <item>WHATSUP</item>
+    </string-array>
+</resources>
