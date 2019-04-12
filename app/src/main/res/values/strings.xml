@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">德賽手環測試用App</string>
+    <string name="app_name">德賽手環</string>
     <string name="scan">Scan</string>
     <string name="connect">Connect</string>
     <string name="connecting">Connecting</string>

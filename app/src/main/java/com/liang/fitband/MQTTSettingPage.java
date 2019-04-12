@@ -27,6 +27,7 @@ public class MQTTSettingPage extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_mqttsetting_page);
+        setTitle("MQTT setting");
 
         Button btnSetting = findViewById(R.id.btn_setting);
         Button btnPreviousPage = findViewById(R.id.btn_previous_page);

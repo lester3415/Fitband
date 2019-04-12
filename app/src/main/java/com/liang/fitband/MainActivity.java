@@ -58,6 +58,7 @@ public class MainActivity extends AppCompatActivity {
     private DSBLEDevice device;
     private DSBLESyncData syncData;
     private RequestQueue requestQueue;
+    private String publishTopic = "data";
 
     private String postUrl;
     private String FirmwareVersion;
@@ -92,6 +93,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        setTitle("MainActivity");
 
         tvFirmwareVersion = findViewById(R.id.tv_firmware_version);
         tvID = findViewById(R.id.tv_id);
@@ -122,6 +124,7 @@ public class MainActivity extends AppCompatActivity {
                         heartRate = o.toString();
                         Calendar cal = Calendar.getInstance();
                         sendHeartRatePackage(Integer.parseInt(heartRate), cal.getTimeInMillis());
+                        Log.i(TAG, "timestamp: " + cal.getTimeInMillis());
                         mHandler.sendEmptyMessage(2);
                     }
                     return null;
@@ -143,6 +146,7 @@ public class MainActivity extends AppCompatActivity {
                 public Unit invoke(Object o, Boolean aBoolean) {
                     Log.i(TAG, "sn: " + o + ". Boolean: " + aBoolean);
                     deviceSN = o.toString();
+                    addDeviceRequest();
                     return null;
                 }
             });
@@ -233,7 +237,6 @@ public class MainActivity extends AppCompatActivity {
                     activity.tvCalorie.setText(String.valueOf(Math.floor(activity.calorie * 10) / 10));
                     activity.tvTotalSteps.setText(String.valueOf(activity.todaySteps));
                     activity.tvDistance.setText(String.valueOf(Math.floor(activity.distance * 10) / 10));
-                    activity.addDeviceRequest();
                     break;
 
                 case 2:
@@ -381,7 +384,7 @@ public class MainActivity extends AppCompatActivity {
 
             byte[] sendData = new byte[sendBuffer.limit()];
             sendBuffer.get(sendData);
-            ScanActivity.mqttHelper.publishMessage(sendData, 1);
+            ScanActivity.mqttHelper.publishMessage(publishTopic, sendData, 1);
 
         } catch (IllegalArgumentException ex) {
             ex.printStackTrace();
@@ -425,7 +428,7 @@ public class MainActivity extends AppCompatActivity {
 
             byte[] sendData = new byte[sendBuffer.limit()];
             sendBuffer.get(sendData);
-            ScanActivity.mqttHelper.publishMessage(sendData, 1);
+            ScanActivity.mqttHelper.publishMessage(publishTopic, sendData, 1);
 
         } catch (IllegalArgumentException ex) {
             ex.printStackTrace();
@@ -507,9 +510,11 @@ public class MainActivity extends AppCompatActivity {
                     public void onResponse(JSONObject getData) {
                         try {
                             Log.i(TAG, "Get response = " + getData.toString());    // Get json data from server.
-                            postRequest(getData.getJSONObject("devices").getInt("id"),
-                                    getData.getJSONObject("devices").getString("token")
-                            );
+                            int id = getData.getJSONObject("devices").getInt("id");
+                            String token = getData.getJSONObject("devices").getString("token");
+                            postRequest(id, token);
+                            publishTopic = "/device/" + deviceSN + "/token/" + token + "/protocol";
+                            Log.i(TAG, "publishTopic: " + publishTopic);    // Get json data from server.
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }

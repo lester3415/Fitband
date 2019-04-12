@@ -21,7 +21,7 @@ public class MqttHelper {
 
     private final String clientId = "ExampleAndroidClient" + System.currentTimeMillis();
     private final String subscriptionTopic = "exampleAndroidTopic";
-    private final String publishTopic = "data";
+//    private final String publishTopic = "/device/NiJiaTEST/token/testtoken/protocol";
 
     private IMqttActionListener listener;
 
@@ -120,7 +120,7 @@ public class MqttHelper {
         }
     }
 
-    public void publishMessage(byte[] value, int Qos) {
+    public void publishMessage(String publishTopic, byte[] value, int Qos) {
         try {
             MqttMessage message = new MqttMessage();
             message.setPayload(value);
@@ -136,39 +136,39 @@ public class MqttHelper {
         }
     }
 
-    public void publishMessage(String key, String value, int Qos) {
-        try {
-            JSONObject object = new JSONObject();
-            object.put(key, value);
+//    public void publishMessage(String key, String value, int Qos) {
+//        try {
+//            JSONObject object = new JSONObject();
+//            object.put(key, value);
+//
+//            MqttMessage message = new MqttMessage();
+//            message.setPayload(object.toString().getBytes());
+//            message.setQos(Qos);
+//            mqttAndroidClient.publish(publishTopic, message);
+//            Log.w("MQTT_Debug", "Message Published = " + object.toString());
+//            if (!mqttAndroidClient.isConnected()) {
+//                Log.w("MQTT_Debug", mqttAndroidClient.getBufferedMessageCount() + " messages in buffer.");
+//            }
+//        } catch (JSONException e) {
+//            e.printStackTrace();
+//        } catch (MqttException e) {
+//            System.err.println("Error Publishing = " + e.getMessage());
+//            e.printStackTrace();
+//        }
+//    }
 
-            MqttMessage message = new MqttMessage();
-            message.setPayload(object.toString().getBytes());
-            message.setQos(Qos);
-            mqttAndroidClient.publish(publishTopic, message);
-            Log.w("MQTT_Debug", "Message Published = " + object.toString());
-            if (!mqttAndroidClient.isConnected()) {
-                Log.w("MQTT_Debug", mqttAndroidClient.getBufferedMessageCount() + " messages in buffer.");
-            }
-        } catch (JSONException e) {
-            e.printStackTrace();
-        } catch (MqttException e) {
-            System.err.println("Error Publishing = " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-    public void publishMessage(JSONObject object, int Qos) {
-        try {
-            MqttMessage message = new MqttMessage();
-            message.setPayload(object.toString().getBytes());
-            message.setQos(Qos);
-            mqttAndroidClient.publish(publishTopic, message);
-            Log.w("MQTT_Debug", "Message Published = " + object.toString());
-            if (!mqttAndroidClient.isConnected()) {
-                Log.w("MQTT_Debug", mqttAndroidClient.getBufferedMessageCount() + " messages in buffer.");
-            }
-        } catch (MqttException e) {
-            e.printStackTrace();
-        }
-    }
+//    public void publishMessage(JSONObject object, int Qos) {
+//        try {
+//            MqttMessage message = new MqttMessage();
+//            message.setPayload(object.toString().getBytes());
+//            message.setQos(Qos);
+//            mqttAndroidClient.publish(publishTopic, message);
+//            Log.w("MQTT_Debug", "Message Published = " + object.toString());
+//            if (!mqttAndroidClient.isConnected()) {
+//                Log.w("MQTT_Debug", mqttAndroidClient.getBufferedMessageCount() + " messages in buffer.");
+//            }
+//        } catch (MqttException e) {
+//            e.printStackTrace();
+//        }
+//    }
 }

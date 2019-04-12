@@ -76,6 +76,7 @@ private ProgressDialog dialog;
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_scan);
+        setTitle("Scan");
 
         btnScan = findViewById(R.id.btn_scan);
         btnScan.setOnClickListener(myOnClickListener);
@@ -110,7 +111,6 @@ private ProgressDialog dialog;
         BLEAPIManager.Companion.getInstance();
         BLEAPIManager.Companion.setDebug(true);
         BLEAPIManager.Companion.getInstance().setCallback(dsbleCallback);
-
     }
 
     private View.OnClickListener myOnClickListener = new View.OnClickListener() {
