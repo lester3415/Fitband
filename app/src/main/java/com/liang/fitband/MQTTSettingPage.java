@@ -41,10 +41,10 @@ public class MQTTSettingPage extends AppCompatActivity {
         etPassword = findViewById(R.id.et_password);
 
         SharedPreferences shared = getSharedPreferences("MQTT_Config", MODE_PRIVATE);
-        host = shared.getString("host", "34.217.228.207");
+        host = shared.getString("host", "iotser.iots.tw");
         port = shared.getString("port", "1883");
-        username = shared.getString("username", "iot");
-        password = shared.getString("password", "iotTECH");
+        username = shared.getString("username", "iots");
+        password = shared.getString("password", "iots#MQTT");
 
         etHost.setText(host);
         etPort.setText(port);

@@ -204,9 +204,9 @@ private ProgressDialog dialog;
             @Override
             public void deliveryComplete(IMqttDeliveryToken iMqttDeliveryToken) {
 //                Log.w(MQTT_TAG, "deliveryComplete");
-//                synchronized (mutex) {
-//                    mutex.notifyAll();
-//                }
+                synchronized (mutex) {
+                    mutex.notifyAll();
+                }
             }
         });
     }

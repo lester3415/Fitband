@@ -29,6 +29,7 @@ import com.android.volley.toolbox.Volley;
 import com.desay.dsbluetooth.data.DSBLEAutoType;
 import com.desay.dsbluetooth.data.DSBLEBandFuncType;
 import com.desay.dsbluetooth.data.enums.DSBLEGender;
+import com.desay.dsbluetooth.data.model.DSBLEBloodPressure;
 import com.desay.dsbluetooth.data.model.DSBLESyncData;
 import com.desay.dsbluetooth.data.model.DSBLEUserInfo;
 import com.desay.dsbluetooth.data.model.DSBLEVersion;
@@ -37,6 +38,7 @@ import com.desay.dsbluetooth.device.band.DSBLEBindCallback;
 import com.desay.dsbluetooth.device.band.DSBLESyncCallback;
 import com.desay.dsbluetooth.manager.keep.BLEAPIManager;
 import com.desay.dsbluetooth.manager.keep.DSBLEDevice;
+
 import org.jetbrains.annotations.Nullable;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -74,7 +76,7 @@ public class MainActivity extends AppCompatActivity {
 
     private ByteBuffer sendBuffer = ByteBuffer.allocate(128);
     private ByteBuffer dataBuffer = ByteBuffer.allocate(32);
-//    private ByteBuffer stepsBuffer = ByteBuffer.allocate(16);
+    //    private ByteBuffer stepsBuffer = ByteBuffer.allocate(16);
 //    private ByteBuffer timeStampBuffer = ByteBuffer.allocate(16);
     private ProgressDialog dialog;
 
@@ -110,22 +112,23 @@ public class MainActivity extends AppCompatActivity {
         btnHeartRateCancel.setOnClickListener(myOnClickListener);
 
         dialog = ProgressDialog.show(MainActivity.this, "", "Synchronizing", true);
-        requestQueue = Volley.newRequestQueue(getApplicationContext());
-        device = ScanActivity.globalDevice;
+        requestQueue = Volley.newRequestQueue(getApplicationContext());     // http套件
+        device = ScanActivity.globalDevice;     // get DSBLEDevice
 
         Band band = BLEAPIManager.Companion.getInstance().getBand();
         if (band != null) {
-            band.setSyncCallback(dsbleSyncCallback);
+            band.setSyncCallback(dsbleSyncCallback);        // 設定資料的callback
+            // 設定通知
             band.setNotify(new Function2<DSBLEAutoType, Object, Unit>() {
                 @Override
                 public Unit invoke(DSBLEAutoType dsbleAutoType, Object o) {
                     Log.i(TAG, "DSBLEAutoType: " + dsbleAutoType + ". Object: " + o.toString());
-                    if (dsbleAutoType == DSBLEAutoType.checkHR && isNumeric(o.toString())) {
+                    if (dsbleAutoType == DSBLEAutoType.checkHR && isNumeric(o.toString())) {    // 判斷心率資料是否為數字
                         heartRate = o.toString();
                         Calendar cal = Calendar.getInstance();
-                        sendHeartRatePackage(Integer.parseInt(heartRate), cal.getTimeInMillis());
+                        sendHeartRatePackage(Integer.parseInt(heartRate), cal.getTimeInMillis());       // 送出心率封包
                         Log.i(TAG, "timestamp: " + cal.getTimeInMillis());
-                        mHandler.sendEmptyMessage(2);
+                        mHandler.sendEmptyMessage(2);       // 更新UI
                     }
                     return null;
                 }
@@ -146,7 +149,8 @@ public class MainActivity extends AppCompatActivity {
                 public Unit invoke(Object o, Boolean aBoolean) {
                     Log.i(TAG, "sn: " + o + ". Boolean: " + aBoolean);
                     deviceSN = o.toString();
-                    addDeviceRequest();
+                    publishTopic = "/device/" + deviceSN + "/protocol";
+                    addDeviceRequest();     // 取得sn後進行新增裝置請求，並get id、token
                     return null;
                 }
             });
@@ -156,6 +160,7 @@ public class MainActivity extends AppCompatActivity {
                 public Unit invoke(Object o, Boolean aBoolean) {
                     Log.i(TAG, "battery: " + o + ". Boolean: " + aBoolean);
                     deviceBattery = o.toString();
+                    mHandler.sendEmptyMessage(0);       // 更新UI
                     return null;
                 }
             });
@@ -194,8 +199,6 @@ public class MainActivity extends AppCompatActivity {
                         @Override
                         public Unit invoke(Object o, Boolean aBoolean) {
                             Log.i(TAG, "testHR: " + o + ". Boolean: " + aBoolean);
-
-
                             return null;
                         }
                     });
@@ -231,12 +234,13 @@ public class MainActivity extends AppCompatActivity {
                     activity.tvFirmwareVersion.setText(activity.FirmwareVersion);
                     activity.tvID.setText(activity.deviceSN);
                     activity.tvPower.setText(activity.deviceBattery);
+                    activity.dialog.dismiss();
                     break;
 
                 case 1:
-                    activity.tvCalorie.setText(String.valueOf(Math.floor(activity.calorie * 10) / 10));
+                    activity.tvCalorie.setText(String.valueOf(Math.floor(activity.calorie * 10) / 10));     // 顯示到小數點後一位
                     activity.tvTotalSteps.setText(String.valueOf(activity.todaySteps));
-                    activity.tvDistance.setText(String.valueOf(Math.floor(activity.distance * 10) / 10));
+                    activity.tvDistance.setText(String.valueOf(Math.floor(activity.distance * 10) / 10));   // 顯示到小數點後一位
                     break;
 
                 case 2:
@@ -253,7 +257,8 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void run() {
             Log.i(TAG, "Sync Data: " + syncData.getSteps());
-            mHandler.sendEmptyMessage(0);
+
+            // 載入儲存的個人資料
             SharedPreferences sharedPreferences = getSharedPreferences("Personal_Info", MODE_PRIVATE);
 //            int begin = sharedPreferences.getInt("begin", 7);
 //            int end = sharedPreferences.getInt("end", 23);
@@ -262,6 +267,7 @@ public class MainActivity extends AppCompatActivity {
 //            int gender = sharedPreferences.getInt("gender", 1);
             int age = sharedPreferences.getInt("age", 22);
 
+            // 設定到手還
             BLEAPIManager.Companion.getInstance().getBand().makeFunc(DSBLEBandFuncType.userInfo, new DSBLEUserInfo(height, weight, DSBLEGender.male, age), new Function2<Object, Boolean, Unit>() {
                 @Override
                 public Unit invoke(Object o, Boolean aBoolean) {
@@ -270,84 +276,159 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
 
+            // 重新制定Date格式
             String getCombine;
             SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH", Locale.TRADITIONAL_CHINESE);
-            int length = syncData.getSteps().size();
-            todaySteps = 0;
-            ArrayList<Long> datesNumberArray = new ArrayList<>();
+            SimpleDateFormat todayDateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.TRADITIONAL_CHINESE);
 
-            Calendar cal = Calendar.getInstance();
-            Calendar cal2 = Calendar.getInstance();
-            getCombine = cal2.get(Calendar.YEAR) + "-"
-                    + cal2.get(Calendar.MONTH) + "-"
-                    + cal2.get(Calendar.DAY_OF_MONTH);
+            Calendar dataCalendar = Calendar.getInstance();     // 手環資料的Calendar
+            Calendar todayCalendar = Calendar.getInstance();    // 今日Calendar，只包含年月日
+            // 移除時、分、秒
+            getCombine = todayCalendar.get(Calendar.YEAR) + "-"
+                    + todayCalendar.get(Calendar.MONTH) + "-"
+                    + todayCalendar.get(Calendar.DAY_OF_MONTH);
             try {
-                cal2.setTime(new SimpleDateFormat("yyyy-MM-dd", Locale.TRADITIONAL_CHINESE).parse(getCombine));
+                todayCalendar.setTime(todayDateFormat.parse(getCombine));      // 重新寫入todayCalendar
             } catch (ParseException ex) {
                 ex.printStackTrace();
             }
 
-            for (int i = 0; i < length; i++) {
-                cal.setTime(syncData.getSteps().get(i).getStartTime());
-                getCombine = cal.get(Calendar.YEAR) + "-"
-                        + cal.get(Calendar.MONTH) + "-"
-                        + cal.get(Calendar.DAY_OF_MONTH) + " "
-                        + cal.get(Calendar.HOUR);
+            // 取出血壓資料並送出
+            int bloodPressuresListLength = syncData.getBloodPressures().size();     // 取得血壓筆數
+            DSBLEBloodPressure dsbleBloodPressure;
+            for (int i = 0; i < bloodPressuresListLength; i++) {
+                synchronized (ScanActivity.mutex) {  // 同步鎖
+                    try {
+                        dsbleBloodPressure = syncData.getBloodPressures().get(i);
+                        dataCalendar.setTime(dsbleBloodPressure.getTime());
+                        // 打包並送出收縮壓、舒張壓、timestamp
+                        sendBloodPressurePackage(dsbleBloodPressure.getSystole(), dsbleBloodPressure.getDiastole(), dataCalendar.getTimeInMillis());
+                        ScanActivity.mutex.wait();      // 鎖定，直到MQTT送達
+                    } catch (InterruptedException ex) {
+                        ex.printStackTrace();
+                    } finally {
+                        ScanActivity.mutex.notifyAll();     // 解除
+                    }
+                }
+            }
+
+            int stepsListLength = syncData.getSteps().size();       // 取得步數筆數
+            todaySteps = 0;     // 今日總步數
+            ArrayList<Long> datesNumberArray = new ArrayList<>();       // 建立儲存timestamp的ArrayList
+
+            for (int i = 0; i < stepsListLength; i++) {
+                // 取出每筆Date並以小時為單位，重新制定
+                dataCalendar.setTime(syncData.getSteps().get(i).getStartTime());
+                // 移除分、秒
+                getCombine = dataCalendar.get(Calendar.YEAR) + "-"
+                        + dataCalendar.get(Calendar.MONTH) + "-"
+                        + dataCalendar.get(Calendar.DAY_OF_MONTH) + " "
+                        + dataCalendar.get(Calendar.HOUR);
                 try {
-                    cal.setTime(simpleDateFormat.parse(getCombine));
+                    dataCalendar.setTime(simpleDateFormat.parse(getCombine));
                 } catch (ParseException ex) {
                     ex.printStackTrace();
                 }
 
-                if (!datesNumberArray.contains(cal.getTimeInMillis())) {
-                    datesNumberArray.add(cal.getTimeInMillis());
+                // 以小時為基準的timestamp存入ArrayList
+                if (!datesNumberArray.contains(dataCalendar.getTimeInMillis())) {
+                    datesNumberArray.add(dataCalendar.getTimeInMillis());
                 }
 
-                if (cal.getTimeInMillis() >= cal2.getTimeInMillis()) {
-                    todaySteps += syncData.getSteps().get(i).getStep();
+                // 資料timestamp > 今日timestamp 就是今日資料
+                if (dataCalendar.getTimeInMillis() >= todayCalendar.getTimeInMillis()) {
+                    todaySteps += syncData.getSteps().get(i).getStep();     // 取得今日總步數
                 }
             }
 
+            // 取出以小時為基準的資料
             for (int i = 0; i < datesNumberArray.size(); i++) {
-                int hourSteps = 0;
-                for (int j = 0; j < length; j++) {
-                    cal.setTime(syncData.getSteps().get(j).getStartTime());
-                    getCombine = cal.get(Calendar.YEAR) + "-"
-                            + cal.get(Calendar.MONTH) + "-"
-                            + cal.get(Calendar.DAY_OF_MONTH) + " "
-                            + cal.get(Calendar.HOUR);
+                int hourSteps = 0;      // 每小時步數
+                for (int j = 0; j < stepsListLength; j++) {
+                     // 取出每筆timestamp
+                    dataCalendar.setTime(syncData.getSteps().get(j).getStartTime());
+                    getCombine = dataCalendar.get(Calendar.YEAR) + "-"
+                            + dataCalendar.get(Calendar.MONTH) + "-"
+                            + dataCalendar.get(Calendar.DAY_OF_MONTH) + " "
+                            + dataCalendar.get(Calendar.HOUR);
                     try {
-                        cal.setTime(simpleDateFormat.parse(getCombine));
+                        dataCalendar.setTime(simpleDateFormat.parse(getCombine));
                     } catch (ParseException ex) {
                         ex.printStackTrace();
                     }
 
-                    if (datesNumberArray.get(i) == cal.getTimeInMillis()) {
+                    // 如果timestamp符合以小時為單位的timestamp，就加入hourSteps
+                    if (datesNumberArray.get(i) == dataCalendar.getTimeInMillis()) {
                         hourSteps += syncData.getSteps().get(j).getStep();
                     }
                 }
 
-                sendStepPackage(hourSteps, datesNumberArray.get(i));
-//                synchronized(ScanActivity.mutex) {
-//                    try {
-//                        sendPackage(todaySteps, datesNumberArray.get(i));
-//                        ScanActivity.mutex.wait();
-//                    } catch (InterruptedException ex) {
-//                        ex.printStackTrace();
-//                    } finally {
-//                        ScanActivity.mutex.notifyAll();
-//                    }
-//                }
+//                sendStepPackage(hourSteps, datesNumberArray.get(i));
+                // 根據protocol打包並透過MQTT送出
+                synchronized (ScanActivity.mutex) {     // 同步鎖
+                    try {
+                        sendStepPackage(hourSteps, datesNumberArray.get(i));    // 送出每小時的步數、timestamp
+                        ScanActivity.mutex.wait();      // 鎖定
+                    } catch (InterruptedException ex) {
+                        ex.printStackTrace();
+                    } finally {
+                        ScanActivity.mutex.notifyAll();     // 解除
+                    }
+                }
             }
-            distance = (height / 3.0 / 100.0 * todaySteps / 1000);
-            calorie = (1.56468 * weight * distance);
-            mHandler.sendEmptyMessage(1);
-            Log.i(TAG, "Dates list: " + datesNumberArray.size());
-            dialog.dismiss();
+            distance = (height / 3.0 / 100.0 * todaySteps / 1000);      // 計算今日總移動距離
+            calorie = (1.56468 * weight * distance);                    // 計算今日消耗卡路里
+            mHandler.sendEmptyMessage(1);                         // UI更新
+            Log.i(TAG, "step date length: " + datesNumberArray.size());
         }
     };
 
-    private void sendStepPackage (int steps, long timeStamp) {
+    private void sendBloodPressurePackage(int systole, int diastole, long timeStamp) {
+        try {
+            sendBuffer.clear();
+            dataBuffer.clear();
+
+            sendBuffer.put((byte) 0xAA);    // HEADER
+            sendBuffer.put((byte) 0xAA);    // HEADER
+            sendBuffer.put((byte) 0x02);    // COUNT
+
+            dataBuffer.put((byte) 0x01);   // TID
+            dataBuffer.put((byte) 0x01);   // TID
+            dataBuffer.put((byte) 0x00);   // TYPE
+            dataBuffer.put((byte) 0x53);   // TYPE = Blood Pressure
+            dataBuffer.put((byte) 0x08);   // LENGTH
+            dataBuffer.put(intToBytes(systole));     // DATA
+            dataBuffer.put(intToBytes(diastole));     // DATA
+
+            dataBuffer.put((byte) 0x02);   // TID
+            dataBuffer.put((byte) 0x02);   // TID
+            dataBuffer.put((byte) 0x00);   // TYPE
+            dataBuffer.put((byte) 0x81);   // TYPE = time
+            dataBuffer.put((byte) 0x08);   // LENGTH
+            dataBuffer.put(longToBytes(timeStamp));     // DATA
+
+            int XOR = 0;    // CHECKSUM
+            for (int i = 0; i < dataBuffer.position(); i++) {
+                XOR ^= dataBuffer.get(i);
+            }
+            dataBuffer.flip();
+            sendBuffer.put(dataBuffer);
+
+            sendBuffer.put((byte) 0xFF);    // FOOTER
+            sendBuffer.put((byte) 0xFF);    // FOOTER
+            sendBuffer.put((byte) XOR);     // CHECKSUM
+            sendBuffer.flip();
+
+            byte[] sendData = new byte[sendBuffer.limit()];
+            sendBuffer.get(sendData);
+            ScanActivity.mqttHelper.publishMessage(publishTopic, sendData, 1);
+
+        } catch (IllegalArgumentException ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    private void sendStepPackage(int steps, long timeStamp) {
         try {
             sendBuffer.clear();
             dataBuffer.clear();
@@ -391,7 +472,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void sendHeartRatePackage (int heartRate, long timeStamp) {
+    private void sendHeartRatePackage(int heartRate, long timeStamp) {
         try {
             sendBuffer.clear();
             dataBuffer.clear();
@@ -447,15 +528,16 @@ public class MainActivity extends AppCompatActivity {
         return buffer.array();
     }
 
-    public static boolean isNumeric(String str){
-        for (int i = str.length();--i>=0;){
-            if (!Character.isDigit(str.charAt(i))){
+    public static boolean isNumeric(String str) {
+        for (int i = str.length(); --i >= 0; ) {
+            if (!Character.isDigit(str.charAt(i))) {
                 return false;
             }
         }
         return true;
     }
 
+    // 新增裝置POST
     private void addDeviceRequest() {
         try {
             String postUrl = "https://iotsboard.iots.tw/v1/devices";
@@ -471,7 +553,7 @@ public class MainActivity extends AppCompatActivity {
                         @Override
                         public void onResponse(JSONObject s) {
                             Log.i(TAG, "Add device response = " + s.toString());    // Get json data from server.
-                            getRequest();
+//                            getRequest();
                         }
                     }, new Response.ErrorListener() {
                 @Override
@@ -502,52 +584,54 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void getRequest() {         // Use volley library.
-        String getUrl = "https://iotsboard.iots.tw/v1/devices/find/" + deviceSN;
-        JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(Request.Method.GET, getUrl, null,
-                new Response.Listener<JSONObject>() {
-                    @Override
-                    public void onResponse(JSONObject getData) {
-                        try {
-                            Log.i(TAG, "Get response = " + getData.toString());    // Get json data from server.
-                            int id = getData.getJSONObject("devices").getInt("id");
-                            String token = getData.getJSONObject("devices").getString("token");
-                            postRequest(id, token);
-                            publishTopic = "/device/" + deviceSN + "/token/" + token + "/protocol";
-                            Log.i(TAG, "publishTopic: " + publishTopic);    // Get json data from server.
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError volleyError) {
-                Log.e(TAG, "Get response error = " + volleyError.getMessage(), volleyError);
-                if (volleyError instanceof TimeoutError || volleyError instanceof NoConnectionError) {
-                    Toast.makeText(MainActivity.this, "Error Network Timeout", Toast.LENGTH_SHORT).show();
-                } else if (volleyError instanceof AuthFailureError) {
-                    Toast.makeText(MainActivity.this, "AuthFailure Error", Toast.LENGTH_SHORT).show();
-                } else if (volleyError instanceof ServerError) {
-                    Toast.makeText(MainActivity.this, "Server Error", Toast.LENGTH_SHORT).show();
-                } else if (volleyError instanceof NetworkError) {
-                    Toast.makeText(MainActivity.this, "Network Error", Toast.LENGTH_SHORT).show();
-                } else if (volleyError instanceof ParseError) {
-                    Toast.makeText(MainActivity.this, "Parse Error", Toast.LENGTH_SHORT).show();
-                }
-                try {
-                    byte[] htmlBodyBytes = volleyError.networkResponse.data;
-                    Log.e("VolleyError body---->", new String(htmlBodyBytes));
-                } catch (NullPointerException ex) {
-                    ex.printStackTrace();
-                }
-            }
-        });
-        requestQueue.add(jsonObjectRequest);
-    }
+    // 取得id、token
+//    private void getRequest() {         // Use volley library.
+//        String getUrl = "https://iotsboard.iots.tw/v1/devices/find/" + deviceSN;
+//        JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(Request.Method.GET, getUrl, null,
+//                new Response.Listener<JSONObject>() {
+//                    @Override
+//                    public void onResponse(JSONObject getData) {
+//                        try {
+//                            Log.i(TAG, "Get response = " + getData.toString());    // Get json data from server.
+//                            int id = getData.getJSONObject("devices").getInt("id");
+//                            String token = getData.getJSONObject("devices").getString("token");
+//                            postRequest(id, token);
+//                            publishTopic = "/device/" + deviceSN + "/token/" + token + "/protocol";
+//                            Log.i(TAG, "publishTopic: " + publishTopic);    // Get json data from server.
+//                        } catch (JSONException e) {
+//                            e.printStackTrace();
+//                        }
+//                    }
+//                }, new Response.ErrorListener() {
+//            @Override
+//            public void onErrorResponse(VolleyError volleyError) {
+//                Log.e(TAG, "Get response error = " + volleyError.getMessage(), volleyError);
+//                if (volleyError instanceof TimeoutError || volleyError instanceof NoConnectionError) {
+//                    Toast.makeText(MainActivity.this, "Error Network Timeout", Toast.LENGTH_SHORT).show();
+//                } else if (volleyError instanceof AuthFailureError) {
+//                    Toast.makeText(MainActivity.this, "AuthFailure Error", Toast.LENGTH_SHORT).show();
+//                } else if (volleyError instanceof ServerError) {
+//                    Toast.makeText(MainActivity.this, "Server Error", Toast.LENGTH_SHORT).show();
+//                } else if (volleyError instanceof NetworkError) {
+//                    Toast.makeText(MainActivity.this, "Network Error", Toast.LENGTH_SHORT).show();
+//                } else if (volleyError instanceof ParseError) {
+//                    Toast.makeText(MainActivity.this, "Parse Error", Toast.LENGTH_SHORT).show();
+//                }
+//                try {
+//                    byte[] htmlBodyBytes = volleyError.networkResponse.data;
+//                    Log.e("VolleyError body---->", new String(htmlBodyBytes));
+//                } catch (NullPointerException ex) {
+//                    ex.printStackTrace();
+//                }
+//            }
+//        });
+//        requestQueue.add(jsonObjectRequest);
+//    }
 
-    private void postRequest(int id, String token) {
+    // http POST data
+//    private void postRequest(int id, String token) {
 //        try {
-            postUrl = "https://iotsboard.iots.tw/v1/devices/" + id + "/" + token;
+//        postUrl = "https://iotsboard.iots.tw/v1/devices/" + id + "/" + token;
 //
 //            JSONObject jsonBody = new JSONObject();
 //            JSONObject jsonData = new JSONObject();
@@ -601,7 +685,7 @@ public class MainActivity extends AppCompatActivity {
 //        } catch (JSONException e) {
 //            e.printStackTrace();
 //        }
-    }
+//    }
 
     private DSBLESyncCallback dsbleSyncCallback = new DSBLESyncCallback() {
 
@@ -673,6 +757,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+
+        // 送出離線訊息
         try {
             JSONObject jsonBody = new JSONObject();
             jsonBody.put("online", false);
@@ -694,6 +780,7 @@ public class MainActivity extends AppCompatActivity {
         } catch (JSONException e) {
             e.printStackTrace();
         }
+
         BLEAPIManager.Companion.getInstance().stopScan();
         mHandler.removeCallbacksAndMessages(null);
         BLEAPIManager.Companion.getInstance().disconnect(device);
