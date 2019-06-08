@@ -195,21 +195,25 @@ public class SignUpActivity extends AppCompatActivity {
     private void signUpRequest(String email, String password, String password_confirmation) {
         try {
             final ProgressDialog dialog = ProgressDialog.show(SignUpActivity.this, "", "註冊中", true);
-            String postUrl = "https://iotsboard.iots.tw/users.json";
+            String postUrl = "http://iotser.iots.tw:8080/api/user_info/v1/signup";
 
-            JSONObject jsonData = new JSONObject();
+//            JSONObject jsonData = new JSONObject();
             JSONObject jsonBody = new JSONObject();
 
             jsonBody.put("email", email);
             jsonBody.put("password", password);
-            jsonBody.put("password_confirmation", password_confirmation);
-            jsonData.put("user", jsonBody);
-            Log.i(TAG, "jsonData = " + jsonData);
-            JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(Request.Method.POST, postUrl, jsonData,
+
+//            Log.i(TAG, "jsonData = " + jsonData);
+            JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(Request.Method.POST, postUrl, jsonBody,
                     new Response.Listener<JSONObject>() {
                         @Override
                         public void onResponse(JSONObject s) {
                             dialog.dismiss();
+                            try {
+                                Toast.makeText(SignUpActivity.this, s.getJSONObject("data").getString("desc"), Toast.LENGTH_SHORT).show();
+                            } catch (JSONException e) {
+                                e.printStackTrace();
+                            }
                             finish();
                             Log.i(TAG, "Sign up response = " + s.toString());    // Get json data from server.
                         }

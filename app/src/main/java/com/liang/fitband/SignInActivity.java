@@ -44,7 +44,8 @@ public class SignInActivity extends AppCompatActivity {
     private String strEmail;
     private String strPassword;
     private Boolean autoSignIn;
-    public static int user_id;
+    public static String user_id;
+    public static String token;
 
     private CheckBox chkAutomaticSignIn;
     private SharedPreferences sharedPreferences;
@@ -210,14 +211,15 @@ public class SignInActivity extends AppCompatActivity {
     private void signInRequest(String email, String password) {
         try {
             final ProgressDialog dialog = ProgressDialog.show(SignInActivity.this, "", "Signing in", true);
-            String postUrl = "https://iotsboard.iots.tw/users/sign_in.json";
+            String postUrl = "http://iotser.iots.tw:8080/api/user_info/v1/signin";
 
             JSONObject jsonData = new JSONObject();
-            JSONObject jsonBody = new JSONObject();
+//            JSONObject jsonBody = new JSONObject();
 
-            jsonBody.put("email", email);
-            jsonBody.put("password", password);
-            jsonData.put("user", jsonBody);
+            jsonData.put("email", email);
+            jsonData.put("password", password);
+//            jsonData.put("sample", jsonBody);
+//            Log.i("jsondata ", jsonData.toString());
 
             JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(Request.Method.POST, postUrl, jsonData,
                     new Response.Listener<JSONObject>() {
@@ -227,7 +229,8 @@ public class SignInActivity extends AppCompatActivity {
                             try {
                                 Intent intent = new Intent(SignInActivity.this, ScanActivity.class);
                                 startActivity(intent);
-                                user_id = object.getInt("id");
+                                user_id = object.getJSONObject("data").getString("user_id");
+                                token = object.getJSONObject("data").getString("token");
                                 finish();
                             } catch (JSONException e) {
                                 e.printStackTrace();

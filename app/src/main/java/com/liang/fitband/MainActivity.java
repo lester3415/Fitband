@@ -49,7 +49,9 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 
 import kotlin.Unit;
 import kotlin.jvm.functions.Function2;
@@ -149,7 +151,7 @@ public class MainActivity extends AppCompatActivity {
                 public Unit invoke(Object o, Boolean aBoolean) {
                     Log.i(TAG, "sn: " + o + ". Boolean: " + aBoolean);
                     deviceSN = o.toString();
-                    publishTopic = "/device/" + deviceSN + "/protocol";
+                    publishTopic = "/device/" + device.getAddress().replaceAll(":", "") + "/protocol";
                     addDeviceRequest();     // 取得sn後進行新增裝置請求，並get id、token
                     return null;
                 }
@@ -234,13 +236,13 @@ public class MainActivity extends AppCompatActivity {
                     activity.tvFirmwareVersion.setText(activity.FirmwareVersion);
                     activity.tvID.setText(activity.deviceSN);
                     activity.tvPower.setText(activity.deviceBattery);
-                    activity.dialog.dismiss();
                     break;
 
                 case 1:
                     activity.tvCalorie.setText(String.valueOf(Math.floor(activity.calorie * 10) / 10));     // 顯示到小數點後一位
                     activity.tvTotalSteps.setText(String.valueOf(activity.todaySteps));
                     activity.tvDistance.setText(String.valueOf(Math.floor(activity.distance * 10) / 10));   // 顯示到小數點後一位
+                    activity.dialog.dismiss();
                     break;
 
                 case 2:
@@ -540,13 +542,13 @@ public class MainActivity extends AppCompatActivity {
     // 新增裝置POST
     private void addDeviceRequest() {
         try {
-            String postUrl = "https://iotsboard.iots.tw/v1/devices";
+            String postUrl = "http://iotser.iots.tw:8080/api/device_info/v1/register";
 
             JSONObject jsonBody = new JSONObject();
 
-            jsonBody.put("did", deviceSN);
-            jsonBody.put("token", System.currentTimeMillis());
-            jsonBody.put("user_id", SignInActivity.user_id);
+            jsonBody.put("mac_address", device.getAddress().replaceAll(":", ""));
+            jsonBody.put("name", "裝置1");
+            jsonBody.put("created_id", SignInActivity.user_id);
 
             JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(Request.Method.POST, postUrl, jsonBody,
                     new Response.Listener<JSONObject>() {
@@ -577,7 +579,15 @@ public class MainActivity extends AppCompatActivity {
                         ex.printStackTrace();
                     }
                 }
-            });
+            }) {
+                @Override
+                public Map<String, String> getHeaders() throws AuthFailureError {
+                    HashMap<String, String> headers = new HashMap<String, String>();
+                    headers.put("Content-Type", "application/json");
+                    headers.put("token", SignInActivity.token);
+                    return headers;
+                }
+            };
             requestQueue.add(jsonObjectRequest);
         } catch (JSONException e) {
             e.printStackTrace();
