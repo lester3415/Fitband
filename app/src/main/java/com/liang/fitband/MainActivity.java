@@ -279,21 +279,12 @@ public class MainActivity extends AppCompatActivity {
             });
 
             // 重新制定Date格式
-            String getCombine;
-            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH", Locale.TRADITIONAL_CHINESE);
-            SimpleDateFormat todayDateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.TRADITIONAL_CHINESE);
-
             Calendar dataCalendar = Calendar.getInstance();     // 手環資料的Calendar
             Calendar todayCalendar = Calendar.getInstance();    // 今日Calendar，只包含年月日
             // 移除時、分、秒
-            getCombine = todayCalendar.get(Calendar.YEAR) + "-"
-                    + todayCalendar.get(Calendar.MONTH) + "-"
-                    + todayCalendar.get(Calendar.DAY_OF_MONTH);
-            try {
-                todayCalendar.setTime(todayDateFormat.parse(getCombine));      // 重新寫入todayCalendar
-            } catch (ParseException ex) {
-                ex.printStackTrace();
-            }
+            todayCalendar.roll(Calendar.HOUR_OF_DAY, -todayCalendar.get(Calendar.HOUR_OF_DAY));
+            todayCalendar.roll(Calendar.MINUTE, -todayCalendar.get(Calendar.MINUTE));
+            todayCalendar.roll(Calendar.SECOND, -todayCalendar.get(Calendar.SECOND));
 
             // 取出血壓資料並送出
             int bloodPressuresListLength = syncData.getBloodPressures().size();     // 取得血壓筆數
@@ -322,15 +313,8 @@ public class MainActivity extends AppCompatActivity {
                 // 取出每筆Date並以小時為單位，重新制定
                 dataCalendar.setTime(syncData.getSteps().get(i).getStartTime());
                 // 移除分、秒
-                getCombine = dataCalendar.get(Calendar.YEAR) + "-"
-                        + dataCalendar.get(Calendar.MONTH) + "-"
-                        + dataCalendar.get(Calendar.DAY_OF_MONTH) + " "
-                        + dataCalendar.get(Calendar.HOUR);
-                try {
-                    dataCalendar.setTime(simpleDateFormat.parse(getCombine));
-                } catch (ParseException ex) {
-                    ex.printStackTrace();
-                }
+                dataCalendar.roll(Calendar.MINUTE, -dataCalendar.get(Calendar.MINUTE));
+                dataCalendar.roll(Calendar.SECOND, -dataCalendar.get(Calendar.SECOND));
 
                 // 以小時為基準的timestamp存入ArrayList
                 if (!datesNumberArray.contains(dataCalendar.getTimeInMillis())) {
@@ -349,15 +333,8 @@ public class MainActivity extends AppCompatActivity {
                 for (int j = 0; j < stepsListLength; j++) {
                      // 取出每筆timestamp
                     dataCalendar.setTime(syncData.getSteps().get(j).getStartTime());
-                    getCombine = dataCalendar.get(Calendar.YEAR) + "-"
-                            + dataCalendar.get(Calendar.MONTH) + "-"
-                            + dataCalendar.get(Calendar.DAY_OF_MONTH) + " "
-                            + dataCalendar.get(Calendar.HOUR);
-                    try {
-                        dataCalendar.setTime(simpleDateFormat.parse(getCombine));
-                    } catch (ParseException ex) {
-                        ex.printStackTrace();
-                    }
+                    dataCalendar.roll(Calendar.MINUTE, -dataCalendar.get(Calendar.MINUTE));
+                    dataCalendar.roll(Calendar.SECOND, -dataCalendar.get(Calendar.SECOND));
 
                     // 如果timestamp符合以小時為單位的timestamp，就加入hourSteps
                     if (datesNumberArray.get(i) == dataCalendar.getTimeInMillis()) {
@@ -367,19 +344,30 @@ public class MainActivity extends AppCompatActivity {
 
 //                sendStepPackage(hourSteps, datesNumberArray.get(i));
                 // 根據protocol打包並透過MQTT送出
-                synchronized (ScanActivity.mutex) {     // 同步鎖
-                    try {
-                        sendStepPackage(hourSteps, datesNumberArray.get(i));    // 送出每小時的步數、timestamp
-                        ScanActivity.mutex.wait();      // 鎖定
-                    } catch (InterruptedException ex) {
-                        ex.printStackTrace();
-                    } finally {
-                        ScanActivity.mutex.notifyAll();     // 解除
-                    }
-                }
+//                synchronized (ScanActivity.mutex) {     // 同步鎖
+//                    try {
+//                        sendStepPackage(hourSteps, datesNumberArray.get(i));    // 送出每小時的步數、timestamp
+//                        ScanActivity.mutex.wait();      // 鎖定
+//                    } catch (InterruptedException ex) {
+//                        ex.printStackTrace();
+//                    } finally {
+//                        ScanActivity.mutex.notifyAll();     // 解除
+//                    }
+//                }
             }
+            BLEAPIManager.Companion.getInstance().getBand().makeFunc(DSBLEBandFuncType.setPace, null, new Function2<Object, Boolean, Unit>() {
+                @Override
+                public Unit invoke(Object o, Boolean aBoolean) {
+                    Log.i(TAG, "setPace: " + o + ". Boolean: " + aBoolean);
+                    todaySteps = (int) o;
+                    sendStepPackage(todaySteps);
+                    return null;
+                }
+            });
             distance = (height / 3.0 / 100.0 * todaySteps / 1000);      // 計算今日總移動距離
+//            sendDistancePackage();
             calorie = (1.56468 * weight * distance);                    // 計算今日消耗卡路里
+//            sendCaloriePackage();
             mHandler.sendEmptyMessage(1);                         // UI更新
             Log.i(TAG, "step date length: " + datesNumberArray.size());
         }
@@ -408,6 +396,7 @@ public class MainActivity extends AppCompatActivity {
             dataBuffer.put((byte) 0x81);   // TYPE = time
             dataBuffer.put((byte) 0x08);   // LENGTH
             dataBuffer.put(longToBytes(timeStamp));     // DATA
+            Log.i("Timestamp", Long.toString(timeStamp));
 
             int XOR = 0;    // CHECKSUM
             for (int i = 0; i < dataBuffer.position(); i++) {
@@ -430,14 +419,59 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void sendStepPackage(int steps, long timeStamp) {
+//    private void sendStepPackage(int steps, long timeStamp) {
+//        try {
+//            sendBuffer.clear();
+//            dataBuffer.clear();
+//
+//            sendBuffer.put((byte) 0xAA);    // HEADER
+//            sendBuffer.put((byte) 0xAA);    // HEADER
+//            sendBuffer.put((byte) 0x02);    // COUNT
+//
+//            dataBuffer.put((byte) 0x01);   // TID
+//            dataBuffer.put((byte) 0x01);   // TID
+//            dataBuffer.put((byte) 0x00);   // TYPE
+//            dataBuffer.put((byte) 0x55);   // TYPE = step
+//            dataBuffer.put((byte) 0x04);   // LENGTH
+//            dataBuffer.put(intToBytes(steps));     // DATA
+//
+//            dataBuffer.put((byte) 0x02);   // TID
+//            dataBuffer.put((byte) 0x02);   // TID
+//            dataBuffer.put((byte) 0x00);   // TYPE
+//            dataBuffer.put((byte) 0x81);   // TYPE = time
+//            dataBuffer.put((byte) 0x08);   // LENGTH
+//            dataBuffer.put(longToBytes(timeStamp));     // DATA
+//            Log.i("Timestamp", Long.toString(timeStamp));
+//
+//            int XOR = 0;    // CHECKSUM
+//            for (int i = 0; i < dataBuffer.position(); i++) {
+//                XOR ^= dataBuffer.get(i);
+//            }
+//            dataBuffer.flip();
+//            sendBuffer.put(dataBuffer);
+//
+//            sendBuffer.put((byte) 0xFF);    // FOOTER
+//            sendBuffer.put((byte) 0xFF);    // FOOTER
+//            sendBuffer.put((byte) XOR);     // CHECKSUM
+//            sendBuffer.flip();
+//
+//            byte[] sendData = new byte[sendBuffer.limit()];
+//            sendBuffer.get(sendData);
+//            ScanActivity.mqttHelper.publishMessage(publishTopic, sendData, 1);
+//
+//        } catch (IllegalArgumentException ex) {
+//            ex.printStackTrace();
+//        }
+//    }
+
+    private void sendStepPackage(int steps) {
         try {
             sendBuffer.clear();
             dataBuffer.clear();
 
             sendBuffer.put((byte) 0xAA);    // HEADER
             sendBuffer.put((byte) 0xAA);    // HEADER
-            sendBuffer.put((byte) 0x02);    // COUNT
+            sendBuffer.put((byte) 0x03);    // COUNT
 
             dataBuffer.put((byte) 0x01);   // TID
             dataBuffer.put((byte) 0x01);   // TID
@@ -449,9 +483,90 @@ public class MainActivity extends AppCompatActivity {
             dataBuffer.put((byte) 0x02);   // TID
             dataBuffer.put((byte) 0x02);   // TID
             dataBuffer.put((byte) 0x00);   // TYPE
-            dataBuffer.put((byte) 0x81);   // TYPE = time
-            dataBuffer.put((byte) 0x08);   // LENGTH
-            dataBuffer.put(longToBytes(timeStamp));     // DATA
+            dataBuffer.put((byte) 0x5C);   // TYPE = distance
+            dataBuffer.put((byte) 0x04);   // LENGTH
+            dataBuffer.put(intToBytes((int) Math.floor(distance * 10)));     // DATA
+
+            dataBuffer.put((byte) 0x03);   // TID
+            dataBuffer.put((byte) 0x03);   // TID
+            dataBuffer.put((byte) 0x00);   // TYPE
+            dataBuffer.put((byte) 0x56);   // TYPE = calorie
+            dataBuffer.put((byte) 0x04);   // LENGTH
+            dataBuffer.put(intToBytes((int) Math.floor(calorie * 10)));     // DATA
+
+            int XOR = 0;    // CHECKSUM
+            for (int i = 0; i < dataBuffer.position(); i++) {
+                XOR ^= dataBuffer.get(i);
+            }
+            dataBuffer.flip();
+            sendBuffer.put(dataBuffer);
+
+            sendBuffer.put((byte) 0xFF);    // FOOTER
+            sendBuffer.put((byte) 0xFF);    // FOOTER
+            sendBuffer.put((byte) XOR);     // CHECKSUM
+            sendBuffer.flip();
+
+            byte[] sendData = new byte[sendBuffer.limit()];
+            sendBuffer.get(sendData);
+            ScanActivity.mqttHelper.publishMessage(publishTopic, sendData, 1);
+
+        } catch (IllegalArgumentException ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    private void sendDistancePackage() {
+        try {
+            sendBuffer.clear();
+            dataBuffer.clear();
+
+            sendBuffer.put((byte) 0xAA);    // HEADER
+            sendBuffer.put((byte) 0xAA);    // HEADER
+            sendBuffer.put((byte) 0x01);    // COUNT
+
+            dataBuffer.put((byte) 0x01);   // TID
+            dataBuffer.put((byte) 0x01);   // TID
+            dataBuffer.put((byte) 0x00);   // TYPE
+            dataBuffer.put((byte) 0x5C);   // TYPE = distance
+            dataBuffer.put((byte) 0x04);   // LENGTH
+            dataBuffer.put(intToBytes((int) Math.floor(distance * 10)));     // DATA
+
+            int XOR = 0;    // CHECKSUM
+            for (int i = 0; i < dataBuffer.position(); i++) {
+                XOR ^= dataBuffer.get(i);
+            }
+            dataBuffer.flip();
+            sendBuffer.put(dataBuffer);
+
+            sendBuffer.put((byte) 0xFF);    // FOOTER
+            sendBuffer.put((byte) 0xFF);    // FOOTER
+            sendBuffer.put((byte) XOR);     // CHECKSUM
+            sendBuffer.flip();
+
+            byte[] sendData = new byte[sendBuffer.limit()];
+            sendBuffer.get(sendData);
+            ScanActivity.mqttHelper.publishMessage(publishTopic, sendData, 1);
+
+        } catch (IllegalArgumentException ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    private void sendCaloriePackage() {
+        try {
+            sendBuffer.clear();
+            dataBuffer.clear();
+
+            sendBuffer.put((byte) 0xAA);    // HEADER
+            sendBuffer.put((byte) 0xAA);    // HEADER
+            sendBuffer.put((byte) 0x01);    // COUNT
+
+            dataBuffer.put((byte) 0x01);   // TID
+            dataBuffer.put((byte) 0x01);   // TID
+            dataBuffer.put((byte) 0x00);   // TYPE
+            dataBuffer.put((byte) 0x56);   // TYPE = calorie
+            dataBuffer.put((byte) 0x04);   // LENGTH
+            dataBuffer.put(intToBytes((int) Math.floor(calorie * 10)));     // DATA
 
             int XOR = 0;    // CHECKSUM
             for (int i = 0; i < dataBuffer.position(); i++) {
@@ -516,6 +631,12 @@ public class MainActivity extends AppCompatActivity {
         } catch (IllegalArgumentException ex) {
             ex.printStackTrace();
         }
+    }
+
+    public static byte[] doubleToByte(double x) {
+        ByteBuffer buffer = ByteBuffer.allocate(8);
+        buffer.putDouble(0, x);
+        return buffer.array();
     }
 
     public static byte[] longToBytes(long x) {
