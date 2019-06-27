@@ -164,10 +164,10 @@ private ProgressDialog dialog;
 
     public void startMqtt() {
         SharedPreferences shared = getSharedPreferences("MQTT_Config", MODE_PRIVATE);   // Save configuration
-        String host = shared.getString("host", "34.217.228.207");
+        String host = shared.getString("host", "iotser.iots.tw");
         String port = shared.getString("port", "1883");
-        String username = shared.getString("username", "iot");
-        String password = shared.getString("password", "iotTECH");
+        String username = shared.getString("username", "iots");
+        String password = shared.getString("password", "iots#MQTT");
 
         String serverUri = "tcp://" + host + ":" + port;
         mqttHelper = new MqttHelper(getApplicationContext(), serverUri, username, password, getMqttActionListener());

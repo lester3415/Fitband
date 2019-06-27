@@ -77,7 +77,7 @@ public class MainActivity extends AppCompatActivity {
     private Thread syncThread;
 
     private ByteBuffer sendBuffer = ByteBuffer.allocate(128);
-    private ByteBuffer dataBuffer = ByteBuffer.allocate(32);
+    private ByteBuffer dataBuffer = ByteBuffer.allocate(64);
     //    private ByteBuffer stepsBuffer = ByteBuffer.allocate(16);
 //    private ByteBuffer timeStampBuffer = ByteBuffer.allocate(16);
     private ProgressDialog dialog;
@@ -151,7 +151,7 @@ public class MainActivity extends AppCompatActivity {
                 public Unit invoke(Object o, Boolean aBoolean) {
                     Log.i(TAG, "sn: " + o + ". Boolean: " + aBoolean);
                     deviceSN = o.toString();
-                    publishTopic = "/device/" + device.getAddress().replaceAll(":", "") + "/protocol";
+                    publishTopic = "/gateway//device/" + device.getAddress().replaceAll(":", "") + "/protocol";
                     addDeviceRequest();     // 取得sn後進行新增裝置請求，並get id、token
                     return null;
                 }
@@ -359,8 +359,12 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public Unit invoke(Object o, Boolean aBoolean) {
                     Log.i(TAG, "setPace: " + o + ". Boolean: " + aBoolean);
-                    todaySteps = (int) o;
-                    sendStepPackage(todaySteps);
+                    try {
+                        todaySteps = (int) o;
+                        sendStepPackage(todaySteps);
+                    } catch (NullPointerException ex) {
+                        ex.printStackTrace();
+                    }
                     return null;
                 }
             });
@@ -471,7 +475,7 @@ public class MainActivity extends AppCompatActivity {
 
             sendBuffer.put((byte) 0xAA);    // HEADER
             sendBuffer.put((byte) 0xAA);    // HEADER
-            sendBuffer.put((byte) 0x03);    // COUNT
+            sendBuffer.put((byte) 0x04);    // COUNT
 
             dataBuffer.put((byte) 0x01);   // TID
             dataBuffer.put((byte) 0x01);   // TID
@@ -493,6 +497,13 @@ public class MainActivity extends AppCompatActivity {
             dataBuffer.put((byte) 0x56);   // TYPE = calorie
             dataBuffer.put((byte) 0x04);   // LENGTH
             dataBuffer.put(intToBytes((int) Math.floor(calorie * 10)));     // DATA
+
+            dataBuffer.put((byte) 0x04);   // TID
+            dataBuffer.put((byte) 0x04);   // TID
+            dataBuffer.put((byte) 0x00);   // TYPE
+            dataBuffer.put((byte) 0x73);   // TYPE = power
+            dataBuffer.put((byte) 0x04);   // LENGTH
+            dataBuffer.put(intToBytes(Integer.parseInt(deviceBattery)));     // DATA
 
             int XOR = 0;    // CHECKSUM
             for (int i = 0; i < dataBuffer.position(); i++) {
